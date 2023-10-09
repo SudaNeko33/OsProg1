@@ -36,6 +36,19 @@ void sigintchild_handler(int signum){
     exit(1);
 }
 
+struct proc print_proc(pid_t pid){
+    if(pid == 0) return (struct proc){0};
+    struct proc p_tmp;
+
+}
+
+
+void sigchild_handler(int signum){
+    if(signum == SIGCHLD){
+        struct proc 
+    }
+}
+
 char** split_multi_cmd(char* commands, int* num_of_cmds){
     char* cmds_remain = strtok(commands, "|");
     int cnt_cmds = 0;

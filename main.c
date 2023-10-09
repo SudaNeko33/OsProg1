@@ -99,6 +99,7 @@ void sigchld_handler(int sig){
             close(pipes[child_count][1]);
             child_count++;
         }
+        // 没懂！！！
         wait(&p.EXCODE);
         p.EXCODE /= 256;
         if(p.EXCODE == SIGINT){
