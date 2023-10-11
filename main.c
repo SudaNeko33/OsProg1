@@ -152,8 +152,11 @@ void sigchld_handler(int sig){
         }else{
             strcpy(p.EXSIG, "Other Signal");
         }
-        char* proc_static = (char*)malloc(sizeof(char)*100);
-        if(p.EXCODE != 0)
+        char* proc_static = (char*)malloc(sizeof(char)*300);
+        char main_cmd[] = "(main)";
+        if(memcmp(p.CMD, main_cmd, 6) == 0){
+            memset(proc_static, 0, sizeof(char)*300);
+        }else if(p.EXCODE != 0)
             sprintf(proc_static,"(PID)%d (CMD)%s (STATE)%c (EXCODE)%d (EXSIG)%s (PPID)%d (USER)%d (SYS)%d (VCTX)%d (NVCTX)%d\n", p.PID, p.CMD, p.STATE,p.EXCODE, p.EXSIG, p.PPID, p.USER, p.SYS, p.VCTX, p.NVCTX);
         else 
             sprintf(proc_static,"(PID)%d (CMD)%s (STATE)%c (EXCODE)%d (PPID)%d (USER)%d (SYS)%d (VCTX)%d (NVCTX)%d\n", p.PID, p.CMD, p.STATE, p.EXCODE, p.PPID, p.USER, p.SYS, p.VCTX, p.NVCTX);
@@ -268,7 +271,7 @@ int main(int argc, char *argv[])
 {
     signal(SIGINT, sigint_handler);
     signal(SIGCHLD, sigchld_handler);
-    signal(SIGUSR1, sigusr1_handler);
+    signal(SIGUSR1, sigusr1_handler);   
     size_t shared_var_size = sizeof(int);
     shared_var = (int *)mmap(NULL, shared_var_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
@@ -361,7 +364,7 @@ int main(int argc, char *argv[])
                     
                 }
                 printf("waiting for sigusr1 to start\n");
-                while(*shared_var == 0);
+                // while(*shared_var == 0);
 
                 if(execvp(cmds[i][0], cmds[i]) == -1){
                     printf("JCshell: \'%s\': No such file or directory\n", cmds[i][0]);
@@ -398,6 +401,8 @@ int main(int argc, char *argv[])
             }
         }
         for(int i=0; i<command_count;i++){
+            close(pipes[i][0]);
+            close(pipes[i][1]);
             free(pipes[i]);
         }
     }
