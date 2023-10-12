@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
                     
                 }
                 printf("waiting for sigusr1 to start\n");
-                // while(*shared_var == 0);
+                while(*shared_var == 0);
 
                 if(execvp(cmds[i][0], cmds[i]) == -1){
                     printf("JCshell: \'%s\': No such file or directory\n", cmds[i][0]);
