@@ -133,7 +133,7 @@ void sigchld_handler(int sig){
             
         }
         
-        wait(NULL);
+        wait(&status);
         // printf("status %d\n", status);
         if(WIFEXITED(status)){
             p.EXCODE = WEXITSTATUS(status);
