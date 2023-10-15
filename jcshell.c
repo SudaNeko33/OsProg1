@@ -1,3 +1,13 @@
+/*
+    Name: Xu Ziyin
+    No. 3036173372
+    Development platform: Ubuntu 22.04
+    Remark:
+    It seems that i have finished all the requirements and tested the examples in the pdf file
+    but definitely i have not tested all cases so there might be some bugs. 
+    THANK YOU!
+*/
+
 #include<stdio.h>
 #include<unistd.h>
 #include<stdlib.h>
@@ -7,6 +17,7 @@
 #include<signal.h>
 #include <sys/mman.h>
 
+// define global variables
 pid_t pid = -1;
 
 char* buf[6] = {0};
@@ -23,7 +34,7 @@ int status = 0;
 char* commands[6] = {0};
 char* cmds[6][30] = {0};
 
-int* shared_var = 0  ;
+int* shared_var = 0;
 
 struct proc p ;
 struct proc {
@@ -39,6 +50,7 @@ struct proc {
     int NVCTX;
 };
 
+// signal in JCshell process
 void sigint_handler(int signum){
     if(signum == SIGINT ){
         if(pid == getpid()){
@@ -48,81 +60,72 @@ void sigint_handler(int signum){
     }
 }
 
+// signal in child process
 void sigintchild_handler(int sig){
     exit(0);
 }
 
+// receive SIGUSR1 and then execute the command
 void sigusr1_handler(int sig){
     printf("Receive sigusr1, start\n");
     *shared_var = 1;
 }
 
-
+// print the process information
 void print_proc(pid_t cpid){
-        if(cpid == 0) return ;
-        memset(&p, 0, sizeof(struct proc));
-        p.CMD = (char*)malloc(sizeof(char)*100);
-        // pid_t cpid = wait(NULL);
-        // pid_t cpid = getpid();
-        char prefix[100] ;
-        
+    if(cpid == 0) return ;
+    memset(&p, 0, sizeof(struct proc));
+    p.CMD = (char*)malloc(sizeof(char)*100);
 
-        sprintf(prefix, "/proc/%d/stat", cpid);
-        
-        FILE* fp = fopen(prefix, "r");
-        if(fp == NULL){
-            printf("JCshell: \'%d\': No such process\n", cpid);
-            return ;
-        }
-        
-        char waste[100]={0};  //是什么？？？？
-        int c=0;
-     
-        fscanf(fp, "%d", &p.PID);
-        // printf("%d %c\n", c,p.PID);
-        // printf("%d\n", strlen(waste));
-        fscanf(fp, "%s %c %d", p.CMD, &p.STATE, &p.PPID);
-        
+    // file path
+    char prefix[100] ;
+    sprintf(prefix, "/proc/%d/stat", cpid);
+    
+    FILE* fp = fopen(prefix, "r");
+    if(fp == NULL){
+        printf("JCshell: \'%d\': No such process\n", cpid);
+        return ;
+    }
+    
+    char tmp[100]={0}; // information dont need to be stored
+    
+    fscanf(fp, "%d", &p.PID);
+    fscanf(fp, "%s %c %d", p.CMD, &p.STATE, &p.PPID);
+    
+    for(int i=0 ;i<9;i++){
+        fscanf(fp, "%s", tmp);
+    }
+    
+    fscanf(fp, "%d %d", &p.USER, &p.SYS);
 
-        // printf("\nstatus %d\n", status);
-        for(int i=0 ;i<9;i++){
-            fscanf(fp, "%s", waste);
-        }
-        
-        fscanf(fp, "%d %d", &p.USER, &p.SYS);
+    for(int i=0; i<22;i++){
+        fscanf(fp, "%s", tmp);
+    }
+    fscanf(fp, "%d", &p.EXCODE);
+    fclose(fp);
 
-        for(int i=0; i<22;i++){
-            fscanf(fp, "%s", waste);
+    sprintf(prefix, "/proc/%d/status", cpid);
+    fp = fopen(prefix, "r");
+    char title[20];
+    if(fp == NULL){
+        printf("JCshell: \'%d\': No such process\n", cpid);
+        return ;
+    }
+    while(fscanf(fp, "%s", title) != EOF){
+        if(strcmp(title, "voluntary_ctxt_switches:") == 0){
+            fscanf(fp, "%d", &p.VCTX);
+        }else if(strcmp(title, "nonvoluntary_ctxt_switches:") == 0){
+            fscanf(fp, "%d", &p.NVCTX);
         }
-        fscanf(fp, "%d", &p.EXCODE);
-        fclose(fp);
+    }
 
-        
-        sprintf(prefix, "/proc/%d/status", cpid);
-        fp = fopen(prefix, "r");
-        char title[20];
-        if(fp == NULL){
-            printf("JCshell: \'%d\': No such process\n", cpid);
-            return ;
-        }
-        while(fscanf(fp, "%s", title) != EOF){
-            if(strcmp(title, "voluntary_ctxt_switches:") == 0){
-                fscanf(fp, "%d", &p.VCTX);
-            }else if(strcmp(title, "nonvoluntary_ctxt_switches:") == 0){
-                fscanf(fp, "%d", &p.NVCTX);
-            }
-        }
-
-        fclose(fp);
-        
-        // return p;
-        // exit(0);
+    fclose(fp);
     
 }
 
+// handle SIGCHLD signal
 void sigchld_handler(int sig){
     if(sig == SIGCHLD){
-        
         print_proc(pids[pid_cnt]);
 
         pid_cnt++;
@@ -133,7 +136,6 @@ void sigchld_handler(int sig){
         }
         
         wait(&status);
-        // printf("status %d\n", status);
         if(WIFEXITED(status)){
             p.EXCODE = WEXITSTATUS(status);
         }else{
@@ -141,16 +143,9 @@ void sigchld_handler(int sig){
         }
 
         child_count++;
-        // p.EXCODE /= 256;
-        // if(p.EXCODE == SIGINT){
-        //     strcpy(p.EXSIG, "Interrupt");
-        // }else if(p.EXCODE == SIGKILL){
-        //     strcpy(p.EXSIG, "Killed");
-        // }else 
         if(p.EXCODE == 0){
             strcpy(p.EXSIG, "\0");
         }else{
-            // strcpy(p.EXSIG, "Other Signal");
             strcpy(p.EXSIG, strsignal(WTERMSIG(status)));
         }
         char* proc_static = (char*)malloc(sizeof(char)*300);
@@ -164,16 +159,16 @@ void sigchld_handler(int sig){
         buf[buf_count] = proc_static;
         buf_count++;
         status = 0;
-        // printf("%s\n",p.CMD);
     }
 }
 
-void analysis_multi(char* input, int* cnt){
+// analysis the input commands
+void split_multi_cmd(char* input, int* num_of_cmds){
+    // check whether there are two | symbols without in-between commands
     int flag = 0;
     int i = 0;
     while (input[i] != '\0') {
         if (input[i] == '|') {
-                // check if there are only spaces in between the two pipes
                 int j = i + 1;
                 if (input[j] == '|') {
                     flag = 1;
@@ -194,91 +189,89 @@ void analysis_multi(char* input, int* cnt){
         printf("JCshell: should not have two | symbols without in-between command\n");
         return ;
     }
-    char* temp2 = strtok(input, "|");
-    int count = 0;
-    char* cmd;
-    // char** args = (char**)malloc(sizeof(char)*6);
+    // start to split the input command
+    char* cmds_remain = strtok(input, "|");
+    int cnt_cmds = 0;
+    char* cmd_tmp;
     memset(commands, 0, sizeof(char*)*6);
-    while(temp2){
-        char* temp1 = temp2;
-        temp2 = strtok(NULL, "|");
-        while(temp1[0] == ' '){
-            temp1++;
+    while(cmds_remain){
+        char* cmds_cur = cmds_remain;
+        cmds_remain = strtok(NULL, "|");
+        while(cmds_cur[0] == ' '){
+            cmds_cur++;
         }
-        printf("%s\n", temp1);
-        if(count == 0){
-            if(temp2){
-                cmd = (char*)malloc(sizeof(char)*(temp2-temp1+1));
+        printf("%s\n", cmds_cur);
+        if(cnt_cmds == 0){
+            if(cmds_remain){
+                cmd_tmp = (char*)malloc(sizeof(char)*(cmds_remain-cmds_cur+1));
             }else{
-                cmd = (char*)malloc(sizeof(char)*(input+1025-temp1));
+                cmd_tmp = (char*)malloc(sizeof(char)*(input+1025-cmds_cur));
             }
-            strcpy(cmd, temp1);
+            strcpy(cmd_tmp, cmds_cur);
             // printf("%d\n", cmd[1024]);
-            commands[0] = cmd;
-        }else if(!temp2 && count !=0){
-            commands[count] = (char*)malloc(sizeof(char)*(input+1025-temp1));
-            strcpy(commands[count], temp1);
-            
+            commands[0] = cmd_tmp;
+        }else if(!cmds_remain && cnt_cmds !=0){
+            commands[cnt_cmds] = (char*)malloc(sizeof(char)*(input+1025-cmds_cur));
+            strcpy(commands[cnt_cmds], cmds_cur);
         }else{
-            commands[count] = (char*)malloc(sizeof(char)*(temp2-temp1+1));
-            strcpy(commands[count], temp1);
+            commands[cnt_cmds] = (char*)malloc(sizeof(char)*(cmds_remain-cmds_cur+1));
+            strcpy(commands[cnt_cmds], cmds_cur);
         }
-        count ++;
-        // printf("%s\n", args[count-1]);
-        if(count > 5){
+        cnt_cmds ++;
+        if(cnt_cmds > 5){
             printf("JCshell: too many commands\n");
             return ;
         }
     }
-    // printf("%d\n", count);
-    *cnt = count;
+    // store the number of commands
+    *num_of_cmds = cnt_cmds;
     return ;
 }
 
-// single command no pipe
-void analysis_single(char* command, int i){
+// analysis a single command
+void split_single_cmd(char* command, int i){
     while(command[0] == ' '){
         command++;
     }
-    char* temp2 = strtok(command, " ");
-    int count = 0; // count string number
-    char* cmd;
-    // char** args = (char**)malloc(sizeof(char)*30);
-    // memset(args, 0, sizeof(char)*30); // why 31?
-    while(temp2){
-        char* temp1 = temp2;
-        temp2 = strtok(NULL, " ");
-        if(temp1 == temp2){
+    char* cmds_remain = strtok(command, " ");
+    int cnt_str = 0; // count string number
+    char* cmd_tmp;
+    
+    while(cmds_remain){
+        char* cmds_cur = cmds_remain;
+        cmds_remain = strtok(NULL, " ");
+        if(cmds_cur == cmds_remain){
             continue;
         }
-        // 从这里开始没懂
-                
-        
-        if(count == 0){
-            if(temp2){ // 
-                cmd = (char*)malloc(sizeof(char)*(temp2-temp1+1)); // temp2-temp1 是两个指针之间的距离
-            }else{ // temp2 是 NULL 只有一条 没有后面空格什么的 eg ls
-                cmd = (char*)malloc(sizeof(char)*(command+1025-temp1));
+        if(cnt_str == 0){
+            if(cmds_remain){ // cmd_cur is the first command, and with spaces afterwards
+                cmd_tmp = (char*)malloc(sizeof(char)*(cmds_remain-cmds_cur+1));
+                // the distance between two pointers is the length of this command
+            }else{ 
+                // cmd_remain is empty
+                // cmd_cur is the only command, no spaces after, e.g. ls
+                cmd_tmp = (char*)malloc(sizeof(char)*(command+1025-cmds_cur));
             }
-            strcpy(cmd, temp1);
-            cmds[i][0] = cmd;
+            strcpy(cmd_tmp, cmds_cur);
+            cmds[i][0] = cmd_tmp;
             
-        }else if(!temp2 && count !=0){ // temp2 is null 处理最后一个参数（前面有参数）的时候
-            cmds[i][count] = (char*)malloc(sizeof(char)*(command+1025-temp1));
-            strcpy(cmds[i][count], temp1);            
         }else{
-            cmds[i][count] = (char*)malloc(sizeof(char)*(temp2-temp1+1));
-            strcpy(cmds[i][count], temp1);
+            if(!cmds_remain){ // cmd_cur is the last command
+                cmds[i][cnt_str] = (char*)malloc(sizeof(char)*(command+1025-cmds_cur));
+                strcpy(cmds[i][cnt_str], cmds_cur);            
+            } else { // cmd_cur is not the last command
+            cmds[i][cnt_str] = (char*)malloc(sizeof(char)*(cmds_remain-cmds_cur+1));
+            strcpy(cmds[i][cnt_str], cmds_cur);
+            }
         }
-        // printf("%d-%d\n",i, count);
-        count ++;
-        if(count > 30){
+        cnt_str ++;
+        if(cnt_str > 30){
             printf("JCshell: too many arguments\n");
             return ;
         }
     }
-    if(memcmp(cmd, "exit", 4) == 0){
-        if(count > 1){
+    if(memcmp(cmd_tmp, "exit", 4) == 0){
+        if(cnt_str > 1){
             printf("\"exit\" with other arguments!!!\n");
             // return ;
             exit(0);
@@ -291,8 +284,7 @@ void analysis_single(char* command, int i){
     
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     signal(SIGINT, sigint_handler);
     signal(SIGCHLD, sigchld_handler);
     signal(SIGUSR1, sigusr1_handler);   
@@ -328,23 +320,19 @@ int main(int argc, char *argv[])
         command_count = 0;
         child_count = 0;
         pid_cnt = 0;
-        analysis_multi(input, &command_count);
+        split_multi_cmd(input, &command_count);
         
         if(commands == NULL){ 
             continue;
         }
-        
-       
-        // char** cmds[6];
+
         int valid = 1;
         for(int i=0;i<command_count;i++){
-            analysis_single(commands[i], i);
-            // printf("%s: command\n", commands[i]);
+            split_single_cmd(commands[i], i);
             if(cmds[i][0] == NULL) {
                 valid = 0;
                 break;
             }
-            // printf("1");
         }
         
         if(!valid) {

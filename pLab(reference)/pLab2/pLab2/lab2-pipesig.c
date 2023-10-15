@@ -23,11 +23,11 @@ int main() {
 		close(pfd[0]);  //close the read end
 		printf("Press enter to close the program\n");
 		getchar();
-/*		int status;
+		int status;
 		wait(&status);
 		if (WIFSIGNALED(status))
 			printf("Child process was terminated by signal %s\n", strsignal(WTERMSIG(status)));
-*/
+
 	}
 	
 	return 0;
